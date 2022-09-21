@@ -7,7 +7,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 
 @SpringBootApplication
-@MapperScan("com.Lmall.dao")
+@MapperScan("com.lmall.dao")
 public class ShoppingCentreApplication {
     public static void main(String[] args) {
         SpringApplication.run(ShoppingCentreApplication.class, args);

@@ -9,8 +9,10 @@
 package com.Lmall.service;
 
 import com.Lmall.api.param.MallUserUpdateParam;
+import com.Lmall.entity.MallUser;
+import com.baomidou.mybatisplus.extension.service.IService;
 
-public interface LouMallUserService {
+public interface LouMallUserService{
 
     /**
      * 用户注册

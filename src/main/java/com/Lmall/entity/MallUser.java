@@ -8,25 +8,32 @@
  */
 package com.Lmall.entity;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
 import java.util.Date;
 
 @Data
+@TableName("tb_mall_user")
 public class MallUser {
+    @TableId(type = IdType.INPUT)
+    @TableField("user_id")
     private Long userId;
-
+    @TableField("nick_name")
     private String nickName;
-
+    @TableField("login_name")
     private String loginName;
-
+    @TableField("password_md5")
     private String passwordMd5;
-
+    @TableField("introduce_sign")
     private String introduceSign;
-
+    @TableField("is_deleted")
     private Byte isDeleted;
-
+    @TableField("locked_flag")
     private Byte lockedFlag;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")

@@ -1,13 +1,4 @@
-/**
- * 严肃声明：
- * 开源版本请务必保留此注释头信息，若删除我方将保留所有法律责任追究！
- * 本软件已申请软件著作权，受国家版权局知识产权以及国家计算机软件著作权保护！
- * 可正常分享和学习源码，不得用于违法犯罪活动，违者必究！
- * Copyright (c) 2020 楼楼商城 all rights reserved.
- * 版权所有，侵权必究！
- */
 package com.Lmall.service.impl;
-
 import com.Lmall.api.param.MallUserUpdateParam;
 import com.Lmall.dao.MallUserMapper;
 import com.Lmall.dao.MallUserTokenMapper;
@@ -20,14 +11,15 @@ import com.Lmall.entity.MallUserToken;
 import com.Lmall.service.LouMallUserService;
 import com.Lmall.util.NumberUtil;
 import com.Lmall.util.SystemUtil;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
 import java.util.Date;
 
-@Service
-public class LouMallUserServiceImpl implements LouMallUserService {
 
+@Service
+public class LouMallUserServiceImpl extends ServiceImpl<MallUserMapper,MallUser> implements LouMallUserService {
     @Autowired
     private MallUserMapper mallUserMapper;
     @Autowired
@@ -35,7 +27,10 @@ public class LouMallUserServiceImpl implements LouMallUserService {
 
     @Override
     public String register(String loginName, String password) {
-        if (mallUserMapper.selectByLoginName(loginName) != null) {
+
+        QueryWrapper<MallUser> wrapper=new QueryWrapper<>();
+        wrapper.eq("nic_kName",loginName).eq("password_md5",password);
+        if (mallUserMapper.selectOne(wrapper) != null) {
             return ServiceResultEnum.SAME_LOGIN_NAME_EXIST.getResult();
         }
         MallUser registerUser = new MallUser();
@@ -44,7 +39,7 @@ public class LouMallUserServiceImpl implements LouMallUserService {
         registerUser.setIntroduceSign(Constants.USER_INTRO);
         String passwordMD5 = MD5Util.MD5Encode(password, "UTF-8");
         registerUser.setPasswordMd5(passwordMD5);
-        if (mallUserMapper.insertSelective(registerUser) > 0) {
+        if (mallUserMapper.insert(registerUser) > 0) {
             return ServiceResultEnum.SUCCESS.getResult();
         }
         return ServiceResultEnum.DB_ERROR.getResult();
@@ -52,14 +47,16 @@ public class LouMallUserServiceImpl implements LouMallUserService {
 
     @Override
     public String login(String loginName, String passwordMD5) {
-        MallUser user = mallUserMapper.selectByLoginNameAndPasswd(loginName, passwordMD5);
+        QueryWrapper<MallUser> wrapper=new QueryWrapper<>();
+        wrapper.eq("login_name",loginName).eq("password_md5",passwordMD5);
+        MallUser user = mallUserMapper.selectOne(wrapper);
         if (user != null) {
             if (user.getLockedFlag() == 1) {
                 return ServiceResultEnum.LOGIN_USER_LOCKED_ERROR.getResult();
             }
             //登录后即执行修改token的操作
             String token = getNewToken(System.currentTimeMillis() + "", user.getUserId());
-            MallUserToken mallUserToken = mallUserTokenMapper.selectByPrimaryKey(user.getUserId());
+            MallUserToken mallUserToken = mallUserTokenMapper.selectById(user.getUserId());
             //当前时间
             Date now = new Date();
             //过期时间
@@ -71,7 +68,7 @@ public class LouMallUserServiceImpl implements LouMallUserService {
                 mallUserToken.setUpdateTime(now);
                 mallUserToken.setExpireTime(expireTime);
                 //新增一条token数据
-                if (mallUserTokenMapper.insertSelective(mallUserToken) > 0) {
+                if (mallUserTokenMapper.insert(mallUserToken) > 0) {
                     //新增成功后返回
                     return token;
                 }
@@ -80,7 +77,9 @@ public class LouMallUserServiceImpl implements LouMallUserService {
                 mallUserToken.setUpdateTime(now);
                 mallUserToken.setExpireTime(expireTime);
                 //更新
-                if (mallUserTokenMapper.updateByPrimaryKeySelective(mallUserToken) > 0) {
+                QueryWrapper<MallUserToken> wrapper2=new QueryWrapper<>();
+                wrapper2.eq("user_id",user.getUserId());
+                if (mallUserTokenMapper.update(mallUserToken,wrapper2) > 0) {
                     //修改成功后返回
                     return token;
                 }
@@ -104,14 +103,16 @@ public class LouMallUserServiceImpl implements LouMallUserService {
 
     @Override
     public Boolean updateUserInfo(MallUserUpdateParam mallUser, Long userId) {
-        MallUser user = mallUserMapper.selectByPrimaryKey(userId);
+        QueryWrapper<MallUser> wrapper=new QueryWrapper<>();
+        wrapper.eq("user_id",userId);
+        MallUser user = mallUserMapper.selectOne(wrapper);
         if (user == null) {
             LouMallException.fail(ServiceResultEnum.DATA_NOT_EXIST.getResult());
         }
         user.setNickName(mallUser.getNickName());
         user.setPasswordMd5(mallUser.getPasswordMd5());
         user.setIntroduceSign(mallUser.getIntroduceSign());
-        if (mallUserMapper.updateByPrimaryKeySelective(user) > 0) {
+        if (mallUserMapper.updateById(user) > 0) {
             return true;
         }
         return false;
@@ -119,6 +120,6 @@ public class LouMallUserServiceImpl implements LouMallUserService {
 
     @Override
     public Boolean logout(Long userId) {
-        return mallUserTokenMapper.deleteByPrimaryKey(userId) > 0;
+        return mallUserTokenMapper.deleteById(userId) > 0;
     }
 }

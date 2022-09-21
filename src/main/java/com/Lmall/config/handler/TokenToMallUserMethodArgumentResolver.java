@@ -16,6 +16,7 @@ import com.Lmall.entity.MallUserToken;
 import com.Lmall.common.Constants;
 import com.Lmall.common.LouMallException;
 import com.Lmall.common.ServiceResultEnum;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.MethodParameter;
 import org.springframework.stereotype.Component;
@@ -50,11 +51,13 @@ public class TokenToMallUserMethodArgumentResolver implements HandlerMethodArgum
             MallUser mallUser = null;
             String token = webRequest.getHeader("token");
             if (null != token && !"".equals(token) && token.length() == Constants.TOKEN_LENGTH) {
-                MallUserToken mallUserToken = mallUserTokenMapper.selectByToken(token);
+                QueryWrapper<MallUserToken> wrapper = new QueryWrapper<>();
+                wrapper.eq("token",token);
+                MallUserToken mallUserToken = mallUserTokenMapper.selectOne(wrapper);
                 if (mallUserToken == null || mallUserToken.getExpireTime().getTime() <= System.currentTimeMillis()) {
                     LouMallException.fail(ServiceResultEnum.TOKEN_EXPIRE_ERROR.getResult());
                 }
-                mallUser = mallUserMapper.selectByPrimaryKey(mallUserToken.getUserId());
+                mallUser = mallUserMapper.selectById(mallUserToken.getUserId());
                 if (mallUser == null) {
                     LouMallException.fail(ServiceResultEnum.USER_NULL_ERROR.getResult());
                 }
