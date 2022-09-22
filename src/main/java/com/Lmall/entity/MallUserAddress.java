@@ -8,12 +8,17 @@
  */
 package com.Lmall.entity;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
 import java.util.Date;
 
 @Data
+@TableName("tb_mall_user_address")
 public class MallUserAddress {
+    @TableId(type = IdType.INPUT)
     private Long addressId;
 
     private Long userId;

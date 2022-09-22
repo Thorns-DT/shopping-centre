@@ -15,6 +15,7 @@ import com.Lmall.common.ServiceResultEnum;
 import com.Lmall.entity.MallUserAddress;
 import com.Lmall.service.LouMallUserAddressService;
 import com.Lmall.util.BeanUtil;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,7 +31,9 @@ public class LouMallUserAddressServiceImpl implements LouMallUserAddressService 
 
     @Override
     public List<LouMallUserAddressVO> getMyAddresses(Long userId) {
-        List<MallUserAddress> myAddressList = userAddressMapper.findMyAddressList(userId);
+        QueryWrapper<MallUserAddress> wrapper = new QueryWrapper<>();
+        wrapper.eq("user_id",userId);
+        List<MallUserAddress> myAddressList = userAddressMapper.selectList(wrapper);
         List<LouMallUserAddressVO> louMallUserAddressVOS = BeanUtil.copyList(myAddressList, LouMallUserAddressVO.class);
         return louMallUserAddressVOS;
     }
@@ -39,20 +42,22 @@ public class LouMallUserAddressServiceImpl implements LouMallUserAddressService 
     @Transactional
     public Boolean saveUserAddress(MallUserAddress mallUserAddress) {
         Date now = new Date();
+        QueryWrapper<MallUserAddress> wrapper = new QueryWrapper<>();
+        wrapper.eq("address_id",mallUserAddress.getUserId()).eq("default_flag",1).eq("is_deleted",0).apply("limit 1");
         if (mallUserAddress.getDefaultFlag().intValue() == 1) {
             //添加默认地址，需要将原有的默认地址修改掉
-            MallUserAddress defaultAddress = userAddressMapper.getMyDefaultAddress(mallUserAddress.getUserId());
+            MallUserAddress defaultAddress = userAddressMapper.selectOne(wrapper);
             if (defaultAddress != null) {
                 defaultAddress.setDefaultFlag((byte) 0);
                 defaultAddress.setUpdateTime(now);
-                int updateResult = userAddressMapper.updateByPrimaryKeySelective(defaultAddress);
+                int updateResult = userAddressMapper.updateById(defaultAddress);
                 if (updateResult < 1) {
                     //未更新成功
                     LouMallException.fail(ServiceResultEnum.DB_ERROR.getResult());
                 }
             }
         }
-        return userAddressMapper.insertSelective(mallUserAddress) > 0;
+        return userAddressMapper.insert(mallUserAddress) > 0;
     }
 
     @Override
@@ -61,12 +66,14 @@ public class LouMallUserAddressServiceImpl implements LouMallUserAddressService 
         Date now = new Date();
         if (mallUserAddress.getDefaultFlag().intValue() == 1) {
             //修改为默认地址，需要将原有的默认地址修改掉
-            MallUserAddress defaultAddress = userAddressMapper.getMyDefaultAddress(mallUserAddress.getUserId());
+            QueryWrapper<MallUserAddress> wrapper = new QueryWrapper<>();
+            wrapper.eq("address_id",mallUserAddress.getUserId()).eq("default_flag",1).eq("is_deleted",0).apply("limit 1");
+            MallUserAddress defaultAddress = userAddressMapper.selectOne(wrapper);
             if (defaultAddress != null && !defaultAddress.getAddressId().equals(tempAddress)) {
                 //存在默认地址且默认地址并不是当前修改的地址
                 defaultAddress.setDefaultFlag((byte) 0);
                 defaultAddress.setUpdateTime(now);
-                int updateResult = userAddressMapper.updateByPrimaryKeySelective(defaultAddress);
+                int updateResult = userAddressMapper.updateById(defaultAddress);
                 if (updateResult < 1) {
                     //未更新成功
                     LouMallException.fail(ServiceResultEnum.DB_ERROR.getResult());
@@ -74,12 +81,13 @@ public class LouMallUserAddressServiceImpl implements LouMallUserAddressService 
             }
         }
         mallUserAddress.setUpdateTime(now);
-        return userAddressMapper.updateByPrimaryKeySelective(mallUserAddress) > 0;
+        return userAddressMapper.updateById(mallUserAddress) > 0;
     }
 
     @Override
     public MallUserAddress getMallUserAddressById(Long addressId) {
-        MallUserAddress mallUserAddress = userAddressMapper.selectByPrimaryKey(addressId);
+
+        MallUserAddress mallUserAddress = userAddressMapper.selectById(addressId);
         if (mallUserAddress == null) {
             LouMallException.fail(ServiceResultEnum.DATA_NOT_EXIST.getResult());
         }
@@ -88,11 +96,14 @@ public class LouMallUserAddressServiceImpl implements LouMallUserAddressService 
 
     @Override
     public MallUserAddress getMyDefaultAddressByUserId(Long userId) {
-        return userAddressMapper.getMyDefaultAddress(userId);
+        QueryWrapper<MallUserAddress> wrapper = new QueryWrapper<>();
+        wrapper.eq("address_id",userId).eq("default_flag",1).eq("is_deleted",0).apply("limit 1");
+
+        return userAddressMapper.selectOne(wrapper);
     }
 
     @Override
     public Boolean deleteById(Long addressId) {
-        return userAddressMapper.deleteByPrimaryKey(addressId) > 0;
+        return userAddressMapper.deleteById(addressId) > 0;
     }
 }

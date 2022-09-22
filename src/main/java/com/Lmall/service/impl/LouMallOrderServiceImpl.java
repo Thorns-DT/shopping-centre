@@ -181,7 +181,7 @@ public class LouMallOrderServiceImpl implements LouMallOrderService {
         }
         //删除购物项
         if (!CollectionUtils.isEmpty(itemIdList) && !CollectionUtils.isEmpty(goodsIds) && !CollectionUtils.isEmpty(mallGoods)) {
-            if (mallShoppingCartItemMapper.deleteBatch(itemIdList) > 0) {
+            if (mallShoppingCartItemMapper.deleteBatchIds(itemIdList) > 0) {
                 List<StockNumDTO> stockNumDTOS = BeanUtil.copyList(myShoppingCartItems, StockNumDTO.class);
                 int updateStockNumResult = mallGoodsMapper.updateStockNum(stockNumDTOS);
                 if (updateStockNumResult < 1) {

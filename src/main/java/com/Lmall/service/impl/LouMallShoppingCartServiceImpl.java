@@ -1,11 +1,3 @@
-/**
- * 严肃声明：
- * 开源版本请务必保留此注释头信息，若删除我方将保留所有法律责任追究！
- * 本软件已申请软件著作权，受国家版权局知识产权以及国家计算机软件著作权保护！
- * 可正常分享和学习源码，不得用于违法犯罪活动，违者必究！
- * Copyright (c) 2020 楼楼商城 all rights reserved.
- * 版权所有，侵权必究！
- */
 package com.Lmall.service.impl;
 
 import com.Lmall.api.param.SaveCartItemParam;
@@ -22,6 +14,7 @@ import com.Lmall.service.LouMallShoppingCartService;
 import com.Lmall.util.BeanUtil;
 import com.Lmall.util.PageQueryUtil;
 import com.Lmall.util.PageResult;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -41,7 +34,9 @@ public class LouMallShoppingCartServiceImpl implements LouMallShoppingCartServic
 
     @Override
     public String saveMallCartItem(SaveCartItemParam saveCartItemParam, Long userId) {
-        MallShoppingCartItem temp = mallShoppingCartItemMapper.selectByUserIdAndGoodsId(userId, saveCartItemParam.getGoodsId());
+        QueryWrapper<MallShoppingCartItem> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("user_id",userId).eq("goods_id",saveCartItemParam.getGoodsId()).eq("is_deleted",0);
+        MallShoppingCartItem temp = mallShoppingCartItemMapper.selectOne(queryWrapper);
         if (temp != null) {
             //已存在则修改该记录
             LouMallException.fail(ServiceResultEnum.SHOPPING_CART_ITEM_EXIST_ERROR.getResult());
@@ -51,7 +46,9 @@ public class LouMallShoppingCartServiceImpl implements LouMallShoppingCartServic
         if (mallGoods == null) {
             return ServiceResultEnum.GOODS_NOT_EXIST.getResult();
         }
-        int totalItem = mallShoppingCartItemMapper.selectCountByUserId(userId);
+        QueryWrapper<MallShoppingCartItem> queryWrapper2 = new QueryWrapper<>();
+        queryWrapper.eq("user_id",userId).eq("is_deleted",0);
+        int totalItem = Integer.parseInt(Long.toString(mallShoppingCartItemMapper.selectCount(queryWrapper)));
         //超出单个商品的最大数量
         if (saveCartItemParam.getGoodsCount() < 1) {
             return ServiceResultEnum.SHOPPING_CART_ITEM_NUMBER_ERROR.getResult();
@@ -67,7 +64,7 @@ public class LouMallShoppingCartServiceImpl implements LouMallShoppingCartServic
         BeanUtil.copyProperties(saveCartItemParam, mallShoppingCartItem);
         mallShoppingCartItem.setUserId(userId);
         //保存记录
-        if (mallShoppingCartItemMapper.insertSelective(mallShoppingCartItem) > 0) {
+        if (mallShoppingCartItemMapper.insert(mallShoppingCartItem) > 0) {
             return ServiceResultEnum.SUCCESS.getResult();
         }
         return ServiceResultEnum.DB_ERROR.getResult();
@@ -75,7 +72,7 @@ public class LouMallShoppingCartServiceImpl implements LouMallShoppingCartServic
 
     @Override
     public String updateMallCartItem(UpdateCartItemParam updateCartItemParam, Long userId) {
-        MallShoppingCartItem mallShoppingCartItemUpdate = mallShoppingCartItemMapper.selectByPrimaryKey(updateCartItemParam.getCartItemId());
+        MallShoppingCartItem mallShoppingCartItemUpdate = mallShoppingCartItemMapper.selectById(updateCartItemParam.getCartItemId());
         if (mallShoppingCartItemUpdate == null) {
             return ServiceResultEnum.DATA_NOT_EXIST.getResult();
         }
@@ -89,7 +86,7 @@ public class LouMallShoppingCartServiceImpl implements LouMallShoppingCartServic
         mallShoppingCartItemUpdate.setGoodsCount(updateCartItemParam.getGoodsCount());
         mallShoppingCartItemUpdate.setUpdateTime(new Date());
         //修改记录
-        if (mallShoppingCartItemMapper.updateByPrimaryKeySelective(mallShoppingCartItemUpdate) > 0) {
+        if (mallShoppingCartItemMapper.updateById(mallShoppingCartItemUpdate) > 0) {
             return ServiceResultEnum.SUCCESS.getResult();
         }
         return ServiceResultEnum.DB_ERROR.getResult();
@@ -97,7 +94,7 @@ public class LouMallShoppingCartServiceImpl implements LouMallShoppingCartServic
 
     @Override
     public MallShoppingCartItem getCartItemById(Long shoppingCartItemId) {
-        MallShoppingCartItem mallShoppingCartItem = mallShoppingCartItemMapper.selectByPrimaryKey(shoppingCartItemId);
+        MallShoppingCartItem mallShoppingCartItem = mallShoppingCartItemMapper.selectById(shoppingCartItemId);
         if (mallShoppingCartItem == null) {
             LouMallException.fail(ServiceResultEnum.DATA_NOT_EXIST.getResult());
         }
@@ -106,13 +103,16 @@ public class LouMallShoppingCartServiceImpl implements LouMallShoppingCartServic
 
     @Override
     public Boolean deleteById(Long shoppingCartItemId) {
-        return mallShoppingCartItemMapper.deleteByPrimaryKey(shoppingCartItemId) > 0;
+        return mallShoppingCartItemMapper.deleteById(shoppingCartItemId) > 0;
     }
 
     @Override
     public List<LouMallShoppingCartItemVO> getMyShoppingCartItems(Long mallUserId) {
         List<LouMallShoppingCartItemVO> louMallShoppingCartItemVOS = new ArrayList<>();
-        List<MallShoppingCartItem> mallShoppingCartItems = mallShoppingCartItemMapper.selectByUserId(mallUserId, Constants.SHOPPING_CART_ITEM_TOTAL_NUMBER);
+        QueryWrapper<MallShoppingCartItem> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("user_id",mallUserId).last("limit "+Integer.toString(Constants.SHOPPING_CART_ITEM_TOTAL_NUMBER));
+
+        List<MallShoppingCartItem> mallShoppingCartItems = mallShoppingCartItemMapper.selectList(queryWrapper);
         return getLouMallShoppingCartItemVOS(louMallShoppingCartItemVOS, mallShoppingCartItems);
     }
 
@@ -122,7 +122,9 @@ public class LouMallShoppingCartServiceImpl implements LouMallShoppingCartServic
         if (CollectionUtils.isEmpty(cartItemIds)) {
             LouMallException.fail("购物项不能为空");
         }
-        List<MallShoppingCartItem> mallShoppingCartItems = mallShoppingCartItemMapper.selectByUserIdAndCartItemIds(mallUserId, cartItemIds);
+        QueryWrapper<MallShoppingCartItem> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("user_id",mallUserId).eq("cart_item_ids",cartItemIds);
+        List<MallShoppingCartItem> mallShoppingCartItems = mallShoppingCartItemMapper.selectList(queryWrapper);
         if (CollectionUtils.isEmpty(mallShoppingCartItems)) {
             LouMallException.fail("购物项不能为空");
         }
@@ -171,8 +173,10 @@ public class LouMallShoppingCartServiceImpl implements LouMallShoppingCartServic
     @Override
     public PageResult getMyShoppingCartItems(PageQueryUtil pageUtil) {
         List<LouMallShoppingCartItemVO> louMallShoppingCartItemVOS = new ArrayList<>();
-        List<MallShoppingCartItem> mallShoppingCartItems = mallShoppingCartItemMapper.findMyCartItems(pageUtil);
-        int total = mallShoppingCartItemMapper.getTotalMyCartItems(pageUtil);
+        QueryWrapper<MallShoppingCartItem> queryWrapper = new QueryWrapper<>();
+        queryWrapper.apply("is_deleted = 0",pageUtil);
+        List<MallShoppingCartItem> mallShoppingCartItems = mallShoppingCartItemMapper.selectList(queryWrapper);
+        int total =Integer.parseInt(Long.toString(mallShoppingCartItemMapper.selectCount(queryWrapper)));
         PageResult pageResult = new PageResult(getLouMallShoppingCartItemVOS(louMallShoppingCartItemVOS, mallShoppingCartItems), total, pageUtil.getLimit(), pageUtil.getPage());
         return pageResult;
     }
